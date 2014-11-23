@@ -1,0 +1,131 @@
+---
+title: "Coursera Practical Machine Learning"
+subtitle: "Course Project"
+author: "Lyubov Ignatovsky"
+date: "November 23, 2014"
+output: html_document
+---
+```{r, echo=FALSE, warning=TRUE, results='hide', message=FALSE, cache=FALSE}
+require(caret)
+require(randomForest)
+setwd('/Coursera/Practical Machine Learning')
+```
+
+### Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement---a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### Load Data
+Load the data from training and testing data sets
+```{r, cache=FALSE}
+rm(list = ls())
+if (!file.exists("pml-training.csv")) {
+  download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "pml-training.csv")
+}
+if (!file.exists("pml-testing.csv")) {
+  download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "pml-testing.csv")
+}
+testData <- read.csv("pml-testing.csv", sep = ",", na.strings = c("", "NA"))
+trainData <- read.csv("pml-training.csv", sep = ",", na.strings = c("", "NA"))
+```
+
+### Data Cleanup
+Remove the columns containing features that are not in the testing data set, not related to the time series, not numeric, as well as columns with NAs. The features containing NAs are the variance, mean and stddev within each window for each feature. These values can be disregarded since the training dataset has no time dependence. 
+
+```{r, cache=FALSE}
+NaFld <- apply(testData, 2, function(x) { length (x[x=='NA']) > 0 } )
+testData=testData[,which(NaFld==FALSE)]
+features <- names(testData)[8:59]
+training <- trainData[,c(features,"classe")]
+testing <- testData[,c(features,"problem_id")]
+```
+
+### Bootstrap
+Withhold 25% of the training dataset for cross-validation
+```{r, cache=FALSE}
+set.seed(116)
+inTrain = createDataPartition(training$classe, p=0.75, list=FALSE)
+xTrain = training[inTrain,]
+xValid = training[-inTrain,]
+```
+
+### Feature Selection
+Some features may be highly correlated. The PCA method mixes the final features into components that are difficult to interpret, correlation (>90%).
+```{r, cache=FALSE}
+outcome = which(names(xTrain) == "classe")
+highCorrCols = findCorrelation(abs(cor(xTrain[,-outcome])),0.90)
+highCorrFeatures = names(xTrain)[highCorrCols]
+xTrain = xTrain[,-highCorrCols]
+outcome = which(names(xTrain) == "classe")
+```
+
+Dropping features with high correlation: 
+`r highCorrFeatures[1:length(highCorrFeatures)]`.
+
+### Feature Importance
+The random forest method reduces overfitting and is good for nonlinear features. Use the random forest to discover the most significant nonlinear features. The feature plot for the 4 most important features is shown.
+```{r, cache=FALSE}
+fsRF = randomForest(xTrain[,-outcome], xTrain[,outcome], importance = T)
+rfImp = data.frame(fsRF$importance)
+impFeatures = order(-rfImp$MeanDecreaseGini)
+inImp = createDataPartition(training$classe, p = 0.05, list = FALSE)
+featurePlot(xTrain[inImp,impFeatures[1:4]],xTrain$classe[inImp], plot = "pairs")
+```
+
+The most important features are:
+
+* ``r names(xTrain)[1]``
+* ``r names(xTrain)[2]``
+* ``r names(xTrain)[3]``
+* ``r names(xTrain)[4]``
+
+### Training
+Train using the random forest and k-nearest neighbors for comparison.
+```{r, cache=FALSE}
+ctrlKNN = trainControl(method = "adaptive_cv")
+modelKNN = train(classe ~ ., xTrain, method = "knn", trControl = ctrlKNN)
+ctrlRF = trainControl(method = "oob")
+modelRF = train(classe ~ ., xTrain, method = "rf", ntree = 200, trControl = ctrlRF)
+resultsKNN = data.frame(modelKNN$results)
+resultsRF = data.frame(modelRF$results)
+```
+
+### Testing Out-of-sample error
+The random forest will give a larger accuracy compared to k-nearest neighbors. Apply confusion matrix to k-nearest neighbors and random forrest models to see how much they agree on the cross validation set, compare each model using the cross validation set set outcomes.
+```{r, cache=FALSE}
+fitKNN = predict(modelKNN, xValid)
+fitRF = predict(modelRF, xValid)
+```
+#### K-Nearest Neighbor vs. Random Forrest
+```{r, cache=FALSE, echo=FALSE}
+confusionMatrix(fitRF, fitKNN)
+```
+#### K-Nearest Neighbor vs. cross validation set
+```{r,cache=FALSE, echo=FALSE}
+confusionMatrix(fitKNN, xValid$classe)
+```
+#### Random Forrest vs. cross validation set
+```{r, cache=FALSE, echo=FALSE}
+confusionMatrix(fitRF, xValid$classe)
+```
+The random forest fit is clearly more accurate than the k-nearest neighbors method with 99% accuracy.
+
+### Results
+Apply the random forest model to testing set.
+```{r, cache=FALSE}
+answers = predict(modelRF, testing)
+a = sprintf ("Predictions using Random Forrest: %s",paste(answers,collapse=','))
+a
+```
+{r, cache=FALSE,echo=FALSE}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(answers)
+```
+
+### Conclusion
+The random forest algorithm appears to perform very well (and better than k-nearest neighbor) for predicting activities from accelerometers measurements.
