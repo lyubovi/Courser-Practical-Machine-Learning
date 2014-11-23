@@ -243,32 +243,12 @@ fitRF = predict(modelRF, xValid)</code></pre>
 <div id="results" class="section level3">
 <h3>Results</h3>
 <p>Apply the random forest model to testing set.</p>
-<pre><code>## [1] &quot;Predictions using Random Forrest: B,A,B,A,A,E,D,B,A,A,B,C,B,A,E,E,A,B,B,B&quot;</code></pre>
-<pre><code>##    problem.id answers
-## 1           1       B
-## 2           2       A
-## 3           3       B
-## 4           4       A
-## 5           5       A
-## 6           6       E
-## 7           7       D
-## 8           8       B
-## 9           9       A
-## 10         10       A
-## 11         11       B
-## 12         12       C
-## 13         13       B
-## 14         14       A
-## 15         15       E
-## 16         16       E
-## 17         17       A
-## 18         18       B
-## 19         19       B
-## 20         20       B</code></pre>
-<pre><code>## NULL</code></pre>
-<pre><code>## Warning in is.na(e2): is.na() applied to non-(list or vector) of type
-## 'NULL'</code></pre>
-<pre><code>## [1] NaN</code></pre>
+<pre class="r"><code>answers = predict(modelRF, testing)</code></pre>
+<p>Predictions using Random Forres model: B,A,B,A,A,E,D,B,A,A,B,C,B,A,E,E,A,B,B,B</p>
+</div>
+<div id="conclusion" class="section level3">
+<h3>Conclusion</h3>
+<p>The random forest model appears to perform very well (and better than k-nearest neighbor) for predicting activities from accelerometers measurements.</p>
 </div>
 
 

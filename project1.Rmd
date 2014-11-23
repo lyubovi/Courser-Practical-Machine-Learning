@@ -113,19 +113,18 @@ The random forest fit is clearly more accurate than the k-nearest neighbors meth
 Apply the random forest model to testing set.
 ```{r, cache=FALSE}
 answers = predict(modelRF, testing)
-a = sprintf ("Predictions using Random Forrest: %s",paste(answers,collapse=','))
-a
 ```
-{r, cache=FALSE,echo=FALSE}
-pml_write_files = function(x){
+Predictions using Random Forres model: `r paste(answers,collapse=',')`
+```{r, cache=FALSE,echo=FALSE}
+writeAnswers = function(x){
   n = length(x)
   for(i in 1:n){
     filename = paste0("problem_id_",i,".txt")
     write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
   }
 }
-pml_write_files(answers)
+writeAnswers(answers)
 ```
 
 ### Conclusion
-The random forest algorithm appears to perform very well (and better than k-nearest neighbor) for predicting activities from accelerometers measurements.
+The random forest model appears to perform very well (and better than k-nearest neighbor) for predicting activities from accelerometers measurements.
